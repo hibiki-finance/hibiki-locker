@@ -21,11 +21,20 @@ contract HibikiLocker is ERC721Enumerable {
         uint32 unlockDate;
     }
 
+    struct Vesting {
+        address token;
+        uint256 releaseIndex;
+        uint256[] amounts;
+        uint32[] releases;
+    }
+
     uint256 public gasFee = 333333333333333 wei;
     mapping (uint256 => Lock) private _locks;
+    mapping (uint256 => Vesting) private _vestings;
     uint256 private _mintIndex;
 
     event Locked(address indexed token, uint256 amount, uint32 unlockDate);
+    event Vested(address indexed token, uint256 amount);
     event NFTLocked(address indexed token, uint256 indexed tokenId, uint32 unlockDate);
     event Unlocked(uint256 indexed lockId, uint256 amount);
     event NFTUnlocked(uint256 indexed lockId, uint256 indexed tokenId);
@@ -114,5 +123,40 @@ contract HibikiLocker is ERC721Enumerable {
         IERC721(l.token).transferFrom(address(this), msg.sender, tokenId);
 
         emit NFTUnlocked(lockId, tokenId);
+    }
+
+    /**
+     * @dev Linear vesting of an ERC20 token in specified parts.
+     */
+    function linearVest(address token, uint256 amount, uint256 parts, uint32 interval) external {
+        uint256[] memory amounts = new uint256[](parts);
+        uint32[] memory intervals = new uint32[](parts);
+        for (uint256 i = 0; i < parts; i++) {
+
+        }
+    }
+
+    /**
+     * @dev Non-linear vesting of an ERC20 token.
+     */
+    function vest(address token, uint256[] calldata amounts, uint32[] calldata releases) external {
+        require(amounts.length == releases.length, "Amount and release length mismatch.");
+        uint256 index = _mintIndex++;
+        _mint(msg.sender, index);
+        //_vest(index, token, amount, unlockDate);
+        //IERC20(token).transferFrom(msg.sender, address(this), amount);
+
+        //emit Vested(token, amount);
+    }
+
+    function _vest(uint256 index, address token, uint256[] memory amounts, uint32[] memory releases) internal {
+        Vesting storage v = _vestings[index];
+        v.token = token;
+        v.amounts = amounts;
+        v.releases = releases;
+    }
+
+    function collectVestedTokens() external {
+
     }
 }
