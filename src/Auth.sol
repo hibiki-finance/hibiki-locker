@@ -1,65 +1,71 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.7.0 <0.9.0;
 
+/**
+ * @dev Multiple authority management system.
+ * There are no roles, other than owner and authorised.
+ * Both can do everything, but owner can add and remove authorised addresses.
+ */
 abstract contract Auth {
-    address internal owner;
-    mapping (address => bool) internal authorizations;
 
-    constructor(address _owner) {
-        owner = _owner;
-        authorizations[_owner] = true;
+    address internal _owner;
+    mapping (address => bool) internal _authorizations;
+
+    event OwnershipTransferred(address owner);
+
+    constructor(address owner) {
+        _owner = owner;
+        _authorizations[_owner] = true;
     }
 
     /**
-     * Function modifier to require caller to be contract owner
+     * @dev Function modifier to require caller to be contract owner
      */
     modifier onlyOwner() {
         require(isOwner(msg.sender), "!OWNER"); _;
     }
 
     /**
-     * Function modifier to require caller to be authorized
+     * @dev Function modifier to require caller to be authorized
      */
     modifier authorized() {
         require(isAuthorized(msg.sender), "!AUTHORIZED"); _;
     }
 
     /**
-     * Authorize address. Owner only
+     * @dev Authorize address. Owner only.
      */
     function authorize(address adr) public onlyOwner {
-        authorizations[adr] = true;
+        _authorizations[adr] = true;
     }
 
     /**
-     * Remove address' authorization. Owner only
+     * @dev Remove address' authorization. Owner only.
      */
     function unauthorize(address adr) public onlyOwner {
-        authorizations[adr] = false;
+        _authorizations[adr] = false;
     }
 
     /**
-     * Check if address is owner
+     * @dev Check if address is _owner.
      */
     function isOwner(address account) public view returns (bool) {
-        return account == owner;
+        return account == _owner;
     }
 
     /**
-     * Return address' authorization status
+     * @dev Return address' authorization status
      */
     function isAuthorized(address adr) public view returns (bool) {
-        return authorizations[adr];
+        return _authorizations[adr];
     }
 
     /**
-     * Transfer ownership to new address. Caller must be owner. Leaves old owner authorized
+     * @dev Transfer ownership to a new address. Caller must be _owner. Leaves old _owner authorized.
      */
     function transferOwnership(address payable adr) public onlyOwner {
-        owner = adr;
-        authorizations[adr] = true;
+        _owner = adr;
+        _authorizations[adr] = true;
         emit OwnershipTransferred(adr);
     }
-
-    event OwnershipTransferred(address owner);
 }

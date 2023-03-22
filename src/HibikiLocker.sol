@@ -8,7 +8,7 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 /**
  * @dev Contract to lock assets for a time and receive a token
  */
-contract HibikiLocker is ERC721Enumerable {
+contract HibikiLocker is Auth, ERC721Enumerable {
 
     struct Lock {
         address token;
@@ -16,9 +16,10 @@ contract HibikiLocker is ERC721Enumerable {
         uint32 unlockDate;
     }
 
-    uint256 public gasFee = 333333333333333 wei;
+    uint256 private _gasFee;
     mapping (uint256 => Lock) private _locks;
     uint256 private _mintIndex;
+    address public gasFeeReceiver;
 
     event Locked(address indexed token, uint256 amount, uint32 unlockDate);
     event Unlocked(uint256 indexed lockId, uint256 amount);
@@ -44,14 +45,23 @@ contract HibikiLocker is ERC721Enumerable {
     }
 
     modifier correctGas {
-        if (msg.value != gasFee) {
-            revert WrongFee(msg.value, gasFee);
+        if (msg.value != _gasFee) {
+            revert WrongFee(msg.value, _gasFee);
         }
         _;
     }
 
-    constructor() ERC721("Hibiki.finance Lock", "LOCK") {
-        _setBaseURI("https://hibiki.finance/bsc/lock/");
+    constructor(uint256 gasFee, address receiver) Auth(msg.sender) ERC721("Hibiki.finance Lock", "LOCK") {
+        _gasFee = gasFee;
+        gasFeeReceiver = receiver;
+        _setBaseURI("https://hibiki.finance/lock/");
+    }
+
+    /**
+     * @dev Returns the current extra fee to send alongside a lock transaction.
+     */
+    function getGasFee() external view returns (uint256) {
+        return _gasFee;
     }
 
     /**
