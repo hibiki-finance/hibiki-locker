@@ -20,6 +20,7 @@ contract HibikiLocker is Auth, ERC721Enumerable {
     mapping (uint256 => Lock) private _locks;
     uint256 private _mintIndex;
     address public gasFeeReceiver;
+    mapping (address => uint256[]) private _tokenLocks;
 
     event Locked(address indexed token, uint256 amount, uint32 unlockDate);
     event Unlocked(uint256 indexed lockId, uint256 amount);
@@ -118,5 +119,45 @@ contract HibikiLocker is Auth, ERC721Enumerable {
         _burn(index);
         l.amount = 0;
         IERC20(l.token).transfer(msg.sender, lockedAmount);
+    }
+
+    /**
+     * @dev Returns the lock data at the index.
+     */
+    function viewLock(uint256 index) external view returns (Lock memory) {
+        return _locks[index];
+    }
+
+    /**
+     * @dev Get an array of locks from the specified IDs in the indices array.
+     */
+    function viewLocks(uint256[] calldata indices) external view returns (Lock[] memory) {
+        Lock[] memory locks = new Lock[](indices.length);
+        for (uint256 i = 0; i < indices.length; i++) {
+            locks[i] = _locks[indices[i]];
+        }
+
+        return locks;
+    }
+
+    /**
+     * @dev Returns the amount of locks existing for a token.
+     */
+    function countLocks(address token) external view returns (uint256) {
+        return _tokenLocks[token].length;
+    }
+
+    /**
+     * @dev Returns all lock IDs for a specific token address.
+     */
+    function getAllLocks(address token) external view returns (uint256[] memory) {
+        return _tokenLocks[token];
+    }
+
+    /**
+     * @dev Returns the lock ID for token at the specific index.
+     */
+    function getLockIDForToken(address token, uint256 index) external view returns (uint256) {
+        return _tokenLocks[token][index];
     }
 }
