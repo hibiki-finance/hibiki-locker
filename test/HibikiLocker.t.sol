@@ -157,4 +157,23 @@ contract LockerTest is Test {
         assertEq(oneLock.amount, balanceAfter - balanceBefore);
         assertEq(oneLock.unlockDate, unlockDate);
     }
+
+    function test_SetNewGasFee() public {
+        uint256 newFee = 222333222333222 wei;
+        locker.setGasFee(newFee);
+        assertEq(locker.getGasFee(), newFee);
+        locker.setGasFee(gasFee);
+        assertEq(locker.getGasFee(), gasFee);
+    }
+
+    function test_RevertWhen_GasFeeUpdatedIncorrect() public {
+        uint32 unlockDate = uint32(block.timestamp + 60);
+        uint256 lockAmount = 1 ether;
+        uint256 newFee = 222333222333222 wei;
+        locker.setGasFee(newFee);
+        vm.expectRevert(abi.encodeWithSelector(HibikiFeeManager.WrongFee.selector, gasFee, locker.getGasFee()));
+        locker.lock{value: gasFee}(address(erc20t), lockAmount, unlockDate);
+        locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, unlockDate);
+        locker.setGasFee(gasFee);
+    }
 }
