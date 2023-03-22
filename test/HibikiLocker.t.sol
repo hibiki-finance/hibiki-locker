@@ -109,4 +109,16 @@ contract LockerTest is Test {
         locker.unlock(0);
         assertEq(taxedERC20.balanceOf(address(locker)), 0);
     }
+
+    function test_ManyLocks() public {
+        uint256 lockAmount = 1 ether;
+        uint32 unlockDate = uint32(block.timestamp + 60);
+        for (uint256 i = 0; i < 5; i++) {
+            locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, unlockDate);
+            locker.lock{value: locker.getGasFee()}(address(taxedERC20), lockAmount, unlockDate);
+        }
+        assertEq(locker.balanceOf(address(this)), 10);
+        assertEq(locker.countLocks(address(erc20t)), 5);
+        assertEq(locker.countLocks(address(taxedERC20)), 5);
+    }
 }

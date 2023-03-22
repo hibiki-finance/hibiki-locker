@@ -22,7 +22,7 @@ contract HibikiLocker is Auth, ERC721Enumerable {
     address public gasFeeReceiver;
     mapping (address => uint256[]) private _tokenLocks;
 
-    event Locked(address indexed token, uint256 amount, uint32 unlockDate);
+    event Locked(uint256 indexed lockId, address indexed token, uint256 amount, uint32 unlockDate);
     event Unlocked(uint256 indexed lockId, uint256 amount);
     event Relocked(uint256 indexed lockId, uint32 newUnlockDate);
 
@@ -80,8 +80,9 @@ contract HibikiLocker is Auth, ERC721Enumerable {
         uint256 balanceAfter = tokenToLock.balanceOf(address(this));
         uint256 actuallyTransfered = balanceAfter - balanceBefore;
         _lock(lockId, token, actuallyTransfered, unlockDate);
+        _tokenLocks[token].push(lockId);
 
-        emit Locked(token, actuallyTransfered, unlockDate);
+        emit Locked(lockId, token, actuallyTransfered, unlockDate);
     }
 
     /**
