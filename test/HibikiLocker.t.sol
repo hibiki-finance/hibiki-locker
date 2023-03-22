@@ -113,12 +113,46 @@ contract LockerTest is Test {
     function test_ManyLocks() public {
         uint256 lockAmount = 1 ether;
         uint32 unlockDate = uint32(block.timestamp + 60);
+        address erc20Token = address(erc20t);
+        address taxedErc20 = address(taxedERC20);
+        address testContract = address(this);
         for (uint256 i = 0; i < 5; i++) {
-            locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, unlockDate);
-            locker.lock{value: locker.getGasFee()}(address(taxedERC20), lockAmount, unlockDate);
+            locker.lock{value: locker.getGasFee()}(erc20Token, lockAmount, unlockDate);
+            locker.lock{value: locker.getGasFee()}(taxedErc20, lockAmount, unlockDate);
         }
-        assertEq(locker.balanceOf(address(this)), 10);
-        assertEq(locker.countLocks(address(erc20t)), 5);
-        assertEq(locker.countLocks(address(taxedERC20)), 5);
+        // Check number of lock tokens created in total and for each token.
+        assertEq(locker.balanceOf(testContract), 10);
+        assertEq(locker.countLocks(erc20Token), 5);
+        assertEq(locker.countLocks(taxedErc20), 5);
+
+        // Check the lock data fits with the locks.
+        uint256[] memory lockIds = locker.getAllLocks(erc20Token);
+        uint256 lockId = lockIds[1];
+        assertEq(locker.ownerOf(lockId), testContract);
+        HibikiLocker.Lock memory oneLock = locker.viewLock(lockId);
+        assertEq(oneLock.token, erc20Token);
+    }
+
+    function test_LockDataCorrect() public {
+        uint32 unlockDate = uint32(block.timestamp + 60);
+        uint256 lockAmount = 1 ether;
+        locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, unlockDate);
+        HibikiLocker.Lock memory oneLock = locker.viewLock(0);
+        assertEq(oneLock.token, address(erc20t));
+        assertEq(oneLock.amount, lockAmount);
+        assertEq(oneLock.unlockDate, unlockDate);
+    }
+
+    function test_LockDataCorrectTaxedToken() public {
+        uint32 unlockDate = uint32(block.timestamp + 60);
+        uint256 lockAmount = 1 ether;
+        uint256 balanceBefore = taxedERC20.balanceOf(address(locker));
+        locker.lock{value: locker.getGasFee()}(address(taxedERC20), lockAmount, unlockDate);
+        uint256 balanceAfter = taxedERC20.balanceOf(address(locker));
+        HibikiLocker.Lock memory oneLock = locker.viewLock(0);
+        assertEq(oneLock.token, address(taxedERC20));
+        // Check that the lock is stored with the taxed amount rather than the asked one.
+        assertEq(oneLock.amount, balanceAfter - balanceBefore);
+        assertEq(oneLock.unlockDate, unlockDate);
     }
 }

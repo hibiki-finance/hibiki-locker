@@ -71,6 +71,8 @@ contract HibikiLocker is Auth, ERC721Enumerable {
     function lock(address token, uint256 amount, uint32 unlockDate) external payable futureDate(unlockDate) correctGas {
         uint256 lockId = _mintIndex++;
         _mint(msg.sender, lockId);
+        _tokenLocks[token].push(lockId);
+
         // Some tokens are always taxed.
         // If the tax cannot be avoided, `transferFrom` will leave less tokens in the locker than stored.
         // Then, when unlocking, the transaction would either revert or take someone else's tokens, if any.
@@ -80,7 +82,6 @@ contract HibikiLocker is Auth, ERC721Enumerable {
         uint256 balanceAfter = tokenToLock.balanceOf(address(this));
         uint256 actuallyTransfered = balanceAfter - balanceBefore;
         _lock(lockId, token, actuallyTransfered, unlockDate);
-        _tokenLocks[token].push(lockId);
 
         emit Locked(lockId, token, actuallyTransfered, unlockDate);
     }
@@ -109,7 +110,7 @@ contract HibikiLocker is Auth, ERC721Enumerable {
     }
 
     /**
-     * @dev Unlock a locked ERC20.
+     * @dev Unlock locked ERC20 tokens.
      */
     function unlock(uint256 index) external canManageLock(index) {
         Lock storage l = _locks[index];
