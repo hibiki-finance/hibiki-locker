@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
-import { HibikiLocker } from "../src/HibikiLocker.sol";
+import { HibikiLocker, HibikiFeeManager } from "../src/HibikiLocker.sol";
 import "./mock/TestERC20.sol";
 import { TaxedERC20 } from "./mock/TaxedERC20.sol";
 
@@ -14,7 +14,9 @@ contract LockerTest is Test {
     uint256 private gasFee = 333333333333333 wei;
 
     function setUp() public {
-        locker = new HibikiLocker(gasFee, address(0));
+        TestERC20 feeToken = new TestERC20();
+        feeToken.transfer(address(0xdead), feeToken.balanceOf(address(this)));
+        locker = new HibikiLocker(address(this), gasFee, address(feeToken), 1);
         erc20t = new TestERC20();
         erc20t.approve(address(locker), type(uint256).max);
         taxedERC20 = new TaxedERC20();
@@ -22,7 +24,7 @@ contract LockerTest is Test {
     }
 
     function test_RevertWhen_NoFeePaid() public {
-        vm.expectRevert(abi.encodeWithSelector(HibikiLocker.WrongFee.selector, 0, locker.getGasFee()));
+        vm.expectRevert(abi.encodeWithSelector(HibikiFeeManager.WrongFee.selector, 0, locker.getGasFee()));
         locker.lock(address(erc20t), 1 ether, uint32(block.timestamp + 60));
     }
 

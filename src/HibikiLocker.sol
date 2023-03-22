@@ -4,11 +4,12 @@ pragma solidity ^0.8.18;
 import "./Auth.sol";
 import "./ERC721Enumerable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import { HibikiFeeManager } from "./HibikiFeeManager.sol";
 
 /**
  * @dev Contract to lock assets for a time and receive a token
  */
-contract HibikiLocker is Auth, ERC721Enumerable {
+contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
 
     struct Lock {
         address token;
@@ -16,10 +17,8 @@ contract HibikiLocker is Auth, ERC721Enumerable {
         uint32 unlockDate;
     }
 
-    uint256 private _gasFee;
     mapping (uint256 => Lock) private _locks;
     uint256 private _mintIndex;
-    address public gasFeeReceiver;
     mapping (address => uint256[]) private _tokenLocks;
 
     event Locked(uint256 indexed lockId, address indexed token, uint256 amount, uint32 unlockDate);
@@ -28,7 +27,6 @@ contract HibikiLocker is Auth, ERC721Enumerable {
 
     error WrongTimestamp();
     error CannotManage();
-    error WrongFee(uint256 sent, uint256 expected);
     error LockActive();
 
     modifier futureDate(uint32 attemptedDate) {
@@ -45,24 +43,28 @@ contract HibikiLocker is Auth, ERC721Enumerable {
         _;
     }
 
-    modifier correctGas {
-        if (msg.value != _gasFee) {
-            revert WrongFee(msg.value, _gasFee);
-        }
-        _;
-    }
-
-    constructor(uint256 gasFee, address receiver) Auth(msg.sender) ERC721("Hibiki.finance Lock", "LOCK") {
-        _gasFee = gasFee;
-        gasFeeReceiver = receiver;
+    constructor(address receiver, uint256 gasFee, address holdToken, uint256 holdAmount)
+        Auth(msg.sender)
+        HibikiFeeManager(receiver, gasFee, holdToken, holdAmount)
+        ERC721("Hibiki.finance Lock", "LOCK")
+    {
         _setBaseURI("https://hibiki.finance/lock/");
     }
 
-    /**
-     * @dev Returns the current extra fee to send alongside a lock transaction.
-     */
-    function getGasFee() external view returns (uint256) {
-        return _gasFee;
+    function setGasFee(uint256 fee) external authorized {
+        _setGasFee(fee);
+    }
+
+    function setFeeReceiver(address receiver) external authorized {
+        _setFeeReceiver(receiver);
+    }
+
+    function setHoldToken(address token) external authorized {
+        _setHoldToken(token);
+    }
+
+    function setSendGas(uint256 gas) external authorized {
+        _setSendGas(gas);
     }
 
     /**
