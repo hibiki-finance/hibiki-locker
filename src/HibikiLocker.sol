@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.18;
 
 import "./Auth.sol";
 import "./ERC721Enumerable.sol";
@@ -30,7 +30,7 @@ contract HibikiLocker is ERC721Enumerable {
     error LockActive();
 
     modifier futureDate(uint32 attemptedDate) {
-        if (attemptedDate > 10000000000 || attemptedDate <= block.timestamp) {
+        if (attemptedDate <= block.timestamp) {
             revert WrongTimestamp();
         }
         _;
@@ -60,15 +60,17 @@ contract HibikiLocker is ERC721Enumerable {
     function lock(address token, uint256 amount, uint32 unlockDate) external payable futureDate(unlockDate) correctGas {
         uint256 lockId = _mintIndex++;
         _mint(msg.sender, lockId);
-        _lock(lockId, token, amount, unlockDate);
         // Some tokens are always taxed.
         // If the tax cannot be avoided, `transferFrom` will leave less tokens in the locker than stored.
         // Then, when unlocking, the transaction would either revert or take someone else's tokens, if any.
         IERC20 tokenToLock = IERC20(token);
-        uint256 balanceBefore = 0;
+        uint256 balanceBefore = tokenToLock.balanceOf(address(this));
         IERC20(token).transferFrom(msg.sender, address(this), amount);
+        uint256 balanceAfter = tokenToLock.balanceOf(address(this));
+        uint256 actuallyTransfered = balanceAfter - balanceBefore;
+        _lock(lockId, token, actuallyTransfered, unlockDate);
 
-        emit Locked(token, amount, unlockDate);
+        emit Locked(token, actuallyTransfered, unlockDate);
     }
 
     /**
@@ -76,7 +78,9 @@ contract HibikiLocker is ERC721Enumerable {
      */
     function relock(uint256 lockId, uint32 newDate) external futureDate(newDate) canManageLock(lockId) {
         Lock storage l = _locks[lockId];
-        require(newDate > l.unlockDate, "New date must be after the current date.");
+        if (newDate < l.unlockDate) {
+            revert WrongTimestamp();
+        }
         l.unlockDate = newDate;
 
         emit Relocked(lockId, newDate);

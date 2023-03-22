@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.18;
 
 import "forge-std/Test.sol";
 import { HibikiLocker } from "../src/HibikiLocker.sol";
 import "./mock/TestERC20.sol";
 
 contract LockerTest is Test {
+
     HibikiLocker public locker;
     TestERC20 public erc20t;
 
@@ -72,5 +73,18 @@ contract LockerTest is Test {
         vm.warp(unlockTime + 1);
         vm.expectRevert(HibikiLocker.CannotManage.selector);
         locker.unlock(0);
+    }
+
+    function test_Relock() public {
+        uint32 unlockTime = uint32(block.timestamp + 200);
+        locker.lock{value: locker.gasFee()}(address(erc20t), 1 ether, unlockTime);
+        locker.relock(0, unlockTime + 1);
+    }
+
+    function test_RevertWhen_RelockDateBeforeUnlockDate() public {
+        uint32 unlockTime = uint32(block.timestamp + 200);
+        locker.lock{value: locker.gasFee()}(address(erc20t), 1 ether, unlockTime);
+        vm.expectRevert(HibikiLocker.WrongTimestamp.selector);
+        locker.relock(0, unlockTime - 1);
     }
 }
