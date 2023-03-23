@@ -9,3 +9,7 @@ This repository is using Foundry, as such the faster way to learn about how to u
 ## Deploy
 
 You can find the deployment script on the root. You have to run it with `bash` and pass as a single parameter the network.
+
+## Coverage
+
+You need `lcov` installed to run the test coverage script.
