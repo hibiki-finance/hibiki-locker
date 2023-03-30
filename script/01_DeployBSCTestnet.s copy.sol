@@ -15,7 +15,7 @@ contract DeployBSCTestnet is Script {
         uint256 gasFee = 333333333333333 wei;
         address holdToken = 0xeC12d79597967aeBAf9b1bE75A8D51D29424DE15;
         uint256 holdAmount = 1000 ether;
-        HibikiLocker locker = new HibikiLocker(feeReceiver, gasFee, holdToken, holdAmount);
+        new HibikiLocker(feeReceiver, gasFee, holdToken, holdAmount);
 
         vm.stopBroadcast();
     }

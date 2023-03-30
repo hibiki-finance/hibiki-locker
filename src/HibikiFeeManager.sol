@@ -5,7 +5,7 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 abstract contract HibikiFeeManager {
 
-    uint256 internal _gasForCall = 33000;
+    uint256 internal _gasForCall = 34000;
     uint256 internal _gasFee;
     address internal _feeReceiver;
     address internal _holdToken;
@@ -14,14 +14,17 @@ abstract contract HibikiFeeManager {
     error WrongFee(uint256 sent, uint256 expected);
 
     modifier correctGas {
-        if (msg.value != _gasFee) {
-            if (IERC20(_holdToken).balanceOf(msg.sender) < _holdAmount) {
-                revert WrongFee(msg.value, _gasFee);
-            }
+		address token = _holdToken;
+        uint256 amount = _holdAmount;
+		bool needsToCheck = token == address(0) || amount == 0 || IERC20(token).balanceOf(msg.sender) < amount;
+        uint256 sent = msg.value;
+		uint256 fee = _gasFee;
+        if (needsToCheck && fee != sent) {
+			revert WrongFee(sent, fee);
         }
         _;
-        if (msg.value > 0) {
-            _sendGas(_feeReceiver, msg.value);
+		if (sent > 0) {
+            _sendGas(_feeReceiver, sent);
         }
     }
 
@@ -59,6 +62,14 @@ abstract contract HibikiFeeManager {
 
     function _setHoldToken(address token) internal {
         _holdToken = token;
+    }
+
+    function getHoldAmount() external view returns (uint256) {
+        return _holdAmount;
+    }
+
+    function _setHoldAmount(uint256 amount) internal {
+        _holdAmount = amount;
     }
 
     function _setSendGas(uint256 gas) internal {

@@ -14,7 +14,11 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
     struct Lock {
         address token;
         uint256 amount;
+        uint32 lockDate;
         uint32 unlockDate;
+        // Stored in a single 256 bit slot along dates for UI only.
+        // It is not likely to reach this number of locks anyway, even in decades.
+        uint192 lockId;
     }
 
     mapping (uint256 => Lock) private _locks;
@@ -63,6 +67,10 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
         _setHoldToken(token);
     }
 
+    function setHoldAmount(uint256 amount) external authorized {
+        _setHoldAmount(amount);
+    }
+
     function setSendGas(uint256 gas) external authorized {
         _setSendGas(gas);
     }
@@ -96,6 +104,7 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
         if (newDate < l.unlockDate) {
             revert WrongTimestamp();
         }
+        l.lockDate = uint32(block.timestamp);
         l.unlockDate = newDate;
 
         emit Relocked(lockId, newDate);
@@ -109,6 +118,8 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
         l.token = token;
         l.amount = amount;
         l.unlockDate = unlockDate;
+        l.lockDate = uint32(block.timestamp);
+        l.lockId = uint192(lockId);
     }
 
     /**
@@ -136,6 +147,10 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
      * @dev Get an array of locks from the specified IDs in the indices array.
      */
     function viewLocks(uint256[] calldata indices) external view returns (Lock[] memory) {
+        return _viewLocks(indices);
+    }
+
+    function _viewLocks(uint256[] memory indices) private view returns (Lock[] memory) {
         Lock[] memory locks = new Lock[](indices.length);
         for (uint256 i = 0; i < indices.length; i++) {
             locks[i] = _locks[indices[i]];
@@ -163,5 +178,27 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
      */
     function getLockIDForToken(address token, uint256 index) external view returns (uint256) {
         return _tokenLocks[token][index];
+    }
+
+    /**
+     * @dev Returns the IDs of the locks owned by the address.
+     */
+    function getLockIDsByAddress(address owner) external view returns (uint256[] memory) {
+        return _getLockIDsByAddress(owner);
+    }
+
+    function _getLockIDsByAddress(address owner) private view returns (uint256[] memory) {
+        uint256 locks = balanceOf(owner);
+        uint256[] memory ids = new uint256[](locks);
+        for (uint256 i = 0; i < locks; i++) {
+            ids[i] = tokenOfOwnerByIndex(owner, i);
+        }
+
+        return ids;
+    }
+
+    function getLocksByAddress(address owner) external view returns (Lock[] memory) {
+        uint256[] memory ids = _getLockIDsByAddress(owner);
+        return _viewLocks(ids);
     }
 }

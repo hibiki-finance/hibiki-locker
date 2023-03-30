@@ -8,17 +8,21 @@ import { TaxedERC20 } from "./mock/TaxedERC20.sol";
 
 contract LockerTest is Test {
 
-    HibikiLocker public locker;
-    TestERC20 public erc20t;
-    TaxedERC20 public taxedERC20;
+    HibikiLocker private locker;
+	TestERC20 private feeToken;
+    TestERC20 private erc20t;
+    TaxedERC20 private taxedERC20;
     uint256 private gasFee = 333333333333333 wei;
+	address private feeTokenHolder = address(0xdead);
+	address private feeReceiver = address(0xbeef);
 
     function setUp() public {
-        TestERC20 feeToken = new TestERC20();
-        feeToken.transfer(address(0xdead), feeToken.balanceOf(address(this)));
-        locker = new HibikiLocker(address(this), gasFee, address(feeToken), 1);
+		feeToken = new TestERC20();
+		feeToken.transfer(feeTokenHolder, feeToken.balanceOf(address(this)));
+		locker = new HibikiLocker(feeReceiver, gasFee, address(feeToken), 1);
         erc20t = new TestERC20();
         erc20t.approve(address(locker), type(uint256).max);
+		erc20t.transfer(feeTokenHolder, 1 ether);
         taxedERC20 = new TaxedERC20();
         taxedERC20.approve(address(locker), type(uint256).max);
     }
@@ -36,10 +40,13 @@ contract LockerTest is Test {
     function test_LockTokens() public {
         uint256 balanceBefore = erc20t.balanceOf(address(this));
         uint256 lockAmount = 1 ether;
+		uint256 receiverEtherBefore = feeReceiver.balance;
         locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, uint32(block.timestamp + 60));
         uint256 balanceAfter = erc20t.balanceOf(address(this));
         assertEq(balanceAfter, balanceBefore - lockAmount);
         assertEq(erc20t.balanceOf(address(locker)), lockAmount);
+		uint256 receiverEtherAfter = feeReceiver.balance;
+		assertEq(receiverEtherAfter, receiverEtherBefore + locker.getGasFee());
     }
 
     function test_RevertWhen_UnlockBeforeTime() public {
@@ -50,8 +57,8 @@ contract LockerTest is Test {
 
     function test_RevertWhen_UnlockByNonOwner() public {
         locker.lock{value: locker.getGasFee()}(address(erc20t), 1 ether, uint32(block.timestamp + 200));
+		vm.expectRevert(HibikiLocker.CannotManage.selector);
         vm.prank(address(0));
-        vm.expectRevert(HibikiLocker.CannotManage.selector);
         locker.unlock(0);
     }
 
@@ -173,7 +180,23 @@ contract LockerTest is Test {
         locker.setGasFee(newFee);
         vm.expectRevert(abi.encodeWithSelector(HibikiFeeManager.WrongFee.selector, gasFee, locker.getGasFee()));
         locker.lock{value: gasFee}(address(erc20t), lockAmount, unlockDate);
-        locker.lock{value: locker.getGasFee()}(address(erc20t), lockAmount, unlockDate);
         locker.setGasFee(gasFee);
+    }
+
+	function test_RevertWhen_NoFeePaid_NoHoldToken() public {
+		locker.setHoldToken(address(0));
+        vm.expectRevert(abi.encodeWithSelector(HibikiFeeManager.WrongFee.selector, 0, locker.getGasFee()));
+        locker.lock(address(erc20t), 1 ether, uint32(block.timestamp + 60));
+		locker.setHoldToken(address(feeToken));
+    }
+
+	function test_DoesNotRevertWhen_NoFeePaid_HasHoldToken() public {
+		uint256 amount = erc20t.balanceOf(feeTokenHolder) / 10;
+		vm.prank(feeTokenHolder);
+		erc20t.approve(address(locker), amount);
+		assertEq(locker.getHoldToken(), address(feeToken));
+		assertGe(feeToken.balanceOf(feeTokenHolder), locker.getHoldAmount());
+		vm.prank(feeTokenHolder);
+        locker.lock(address(erc20t), amount, uint32(block.timestamp + 60));
     }
 }

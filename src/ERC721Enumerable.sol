@@ -12,6 +12,7 @@ import "./IERC721Enumerable.sol";
  * account.
  */
 abstract contract ERC721Enumerable is ERC721, IERC721Enumerable {
+
     // Mapping from owner to list of owned token IDs
     mapping(address => mapping(uint256 => uint256)) private _ownedTokens;
 
