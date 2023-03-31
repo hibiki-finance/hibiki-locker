@@ -47,13 +47,17 @@ contract HibikiLocker is Auth, HibikiFeeManager, ERC721Enumerable {
         _;
     }
 
-    constructor(address receiver, uint256 gasFee, address holdToken, uint256 holdAmount)
+    constructor(address receiver, uint256 gasFee, address holdToken, uint256 holdAmount, string memory uriPart)
         Auth(msg.sender)
         HibikiFeeManager(receiver, gasFee, holdToken, holdAmount)
         ERC721("Hibiki.finance Lock", "LOCK")
     {
-        _setBaseURI("https://hibiki.finance/lock/");
+        _setBaseURI(string.concat("https://hibiki.finance/lock/", uriPart, "/"));
     }
+
+	function setBaseURI(string calldata uri) external authorized {
+		_setBaseURI(uri);
+	}
 
     function setGasFee(uint256 fee) external authorized {
         _setGasFee(fee);

@@ -23,8 +23,8 @@ abstract contract HibikiFeeManager {
 			revert WrongFee(sent, fee);
         }
         _;
-		if (sent > 0) {
-            _sendGas(_feeReceiver, sent);
+		if (address(this).balance > 0) {
+            _sendGas(_feeReceiver, address(this).balance);
         }
     }
 

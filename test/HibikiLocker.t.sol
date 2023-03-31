@@ -12,14 +12,14 @@ contract LockerTest is Test {
 	TestERC20 private feeToken;
     TestERC20 private erc20t;
     TaxedERC20 private taxedERC20;
-    uint256 private gasFee = 333333333333333 wei;
+    uint256 private gasFee = 0.00034 ether;
 	address private feeTokenHolder = address(0xdead);
 	address private feeReceiver = address(0xbeef);
 
     function setUp() public {
 		feeToken = new TestERC20();
 		feeToken.transfer(feeTokenHolder, feeToken.balanceOf(address(this)));
-		locker = new HibikiLocker(feeReceiver, gasFee, address(feeToken), 1);
+		locker = new HibikiLocker(feeReceiver, gasFee, address(feeToken), 1, "local");
         erc20t = new TestERC20();
         erc20t.approve(address(locker), type(uint256).max);
 		erc20t.transfer(feeTokenHolder, 1 ether);
@@ -199,4 +199,11 @@ contract LockerTest is Test {
 		vm.prank(feeTokenHolder);
         locker.lock(address(erc20t), amount, uint32(block.timestamp + 60));
     }
+
+	function test_CorrectURI() public {
+		locker.lock{value: locker.getGasFee()}(address(erc20t), 1 ether, uint32(block.timestamp + 60));
+		assertEq(locker.tokenURI(0), "https://hibiki.finance/lock/local/0");
+		locker.lock{value: locker.getGasFee()}(address(erc20t), 1 ether, uint32(block.timestamp + 60));
+		assertEq(locker.tokenURI(1), "https://hibiki.finance/lock/local/1");
+	}
 }
