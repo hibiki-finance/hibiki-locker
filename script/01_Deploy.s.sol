@@ -5,19 +5,19 @@ import "forge-std/Script.sol";
 import { HibikiLocker } from "../src/HibikiLocker.sol";
 
 contract Deploy is Script {
-    function setUp() public {}
+	function setUp() public {}
 
-    function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+	function run() public {
+		uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+		vm.startBroadcast(deployerPrivateKey);
 
 		(address holdToken, uint256 holdAmount) = _getHoldConfig();
-        (address feeReceiver, uint256 gasFee) = _getFeeConfig();
-        
-        new HibikiLocker(feeReceiver, gasFee, holdToken, holdAmount, _getURIPart());
+		(address feeReceiver, uint256 gasFee) = _getFeeConfig();
+		
+		new HibikiLocker(feeReceiver, gasFee, holdToken, holdAmount, _getURIPart());
 
-        vm.stopBroadcast();
-    }
+		vm.stopBroadcast();
+	}
 
 	function _getHoldConfig() internal view returns (address, uint256) {
 		if (block.chainid == 1) {
